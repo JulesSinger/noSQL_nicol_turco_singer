@@ -21,17 +21,44 @@ def generer_listes(fichier_csv):
                 valeur_GO = row[4]
                 valeur_Interpro = row[7]
 
+                
+
                 # Ajouter la valeur de la colonne 3 à la liste correspondante dans le dictionnaire
                 if identifiant in listes_GO_par_identifiant:
-                    listes_GO_par_identifiant[identifiant].append((num_ligne, valeur_GO))
+                    listes_GO_par_identifiant[identifiant].append(valeur_GO)
                 else:
-                    listes_GO_par_identifiant[identifiant] = [(num_ligne, valeur_GO)]
+                    listes_GO_par_identifiant[identifiant] = [valeur_GO]
 
                 # Ajouter la valeur de la colonne 4 à la liste correspondante dans le dictionnaire
                 if identifiant in listes_Interpro_par_identifiant:
-                    listes_Interpro_par_identifiant[identifiant].append((num_ligne, valeur_Interpro))
+                    if '|' in valeur_Interpro:
+                        # Diviser la chaîne en fonction du délimiteur '|'
+                        parties = valeur_Interpro.split('|')
+                
+                        # Filtrer les parties qui commencent par 'InterPro:'
+                        for part in parties:
+                            if part.startswith('InterPro:'):
+                                listes_Interpro_par_identifiant[identifiant].append(part)
+                        #interpro_parts = [part.strip() for part in parties if part.startswith('InterPro:')]
+                    else:
+                        # Si la chaîne ne contient pas '|', vérifier si elle commence par 'InterPro:'
+                        if valeur_Interpro.startswith('InterPro:'):
+                            listes_Interpro_par_identifiant[identifiant].append(valeur_Interpro)
                 else:
-                    listes_Interpro_par_identifiant[identifiant] = [(num_ligne, valeur_Interpro)]
+                    listes_Interpro_par_identifiant[identifiant] = []
+                    if '|' in valeur_Interpro:
+                        # Diviser la chaîne en fonction du délimiteur '|'
+                        parties = valeur_Interpro.split('|')
+                
+                        # Filtrer les parties qui commencent par 'InterPro:'
+                        for part in parties:
+                            if part.startswith('InterPro:'):
+                                listes_Interpro_par_identifiant[identifiant].append(part)
+                        #interpro_parts = [part.strip() for part in parties if part.startswith('InterPro:')]
+                    else:
+                        # Si la chaîne ne contient pas '|', vérifier si elle commence par 'InterPro:'
+                        if valeur_Interpro.startswith('InterPro:'):
+                            listes_Interpro_par_identifiant[identifiant].append(valeur_Interpro)
             # else:
             #     print(f"Attention: La ligne {num_ligne} n'a pas assez d'éléments.")
 
@@ -41,10 +68,3 @@ def generer_listes(fichier_csv):
 # Remplacez "votre_fichier.csv" par le nom réel de votre fichier CSV
 fichier_csv = "goa.csv"
 liste_GO_par_identifiant, liste_Interpro_par_identifiant = generer_listes(fichier_csv)
-
-# Afficher les résultats
-# for identifiant, liste_colonne_3 in resultat_colonne_3.items():
-#     print(f"Identifiant {identifiant}, Colonne 3: {liste_colonne_3}")
-
-# for identifiant, liste_colonne_4 in resultat_colonne_4.items():
-#     print(f"Identifiant {identifiant}, Colonne 4: {liste_colonne_4}")
