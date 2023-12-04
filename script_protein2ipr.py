@@ -14,4 +14,4 @@ def process_protein2ipr():
     # Fermeture du fichier
     f.close()
 
-    return dictionnaire
+    return dictionnaire 
