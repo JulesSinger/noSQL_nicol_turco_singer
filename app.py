@@ -1,6 +1,7 @@
 from flask import Flask, render_template
 from flask_pymongo import PyMongo
 from script_protein2ipr import process_protein2ipr
+import re
 app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb://localhost:27017/proteins"
 mongo = PyMongo(app)
@@ -81,6 +82,35 @@ def insert_links():
                 # insert only if Links doesn't contain to_insert
                 if mongo.db.links.find_one({'Entry': current_protein[0], 'Links': {'$elemMatch': to_insert}}) is None:
                     mongo.db.links.update_one({'Entry': current_protein[0]}, {'$push': {'Links': to_insert}})
+        
+    return "Done"
+
+@app.route('/insert/go')
+def insert_go():
+    with open("data/go.obo", "r") as file:
+        go_data = file.read()
+
+    terms = re.split(r'\[Term\]\s*', go_data)
+    terms = [term.strip() for term in terms if term.strip()]
+    for term in terms:
+        term_dict = {}
+        lines = term.split('\n')
+        current_key = None
+
+        for line in lines:
+            if line:
+                key, value = re.split(r':\s*', line, 1)
+                key = key.lower()
+                
+                # Si la clé est déjà présente dans le dictionnaire, ajouter la valeur au tableau
+                if key in term_dict:
+                    if not isinstance(term_dict[key], list):
+                        term_dict[key] = [term_dict[key]]
+                    term_dict[key].append(value.strip())
+                else:
+                    term_dict[key] = value.strip()
+        if (mongo.db.go.find_one({'id': term_dict['id']}) is None):
+            mongo.db.go.insert_one(term_dict)
         
     return "Done"
 if __name__ == '__main__':
