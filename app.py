@@ -113,5 +113,28 @@ def insert_go():
             mongo.db.go.insert_one(term_dict)
         
     return "Done"
+
+# correct the GO_ID field un proteins collection to transform it in an Array
+@app.route("/correctdb")
+def correct_db(): 
+    # transform GO_ID : "GO:0000045; GO:0000422; GO:0001666; GO:0005776"
+    # into GO_ID : ["GO:0000045", "GO:0000422", "GO:0001666", "GO:0005776"]
+    proteins = mongo.db.proteins.find()
+    # Mise à jour de chaque document
+    for protein in proteins:
+        # Vérification de la présence de la clé GO_ID
+        if 'GO_ID' in protein:
+            # Transformation de la chaîne de caractères en tableau
+            go_ids_str = protein['GO_ID']
+            go_ids_list = [go_id.strip() for go_id in go_ids_str.split(';')]
+            print(go_ids_list)
+            # Mise à jour du document dans la collection
+            mongo.db.proteins.update_one(
+                {'_id': protein['_id']},
+                {'$set': {'GO_ID': go_ids_list}}
+            )
+
+    return 'DONE'
+
 if __name__ == '__main__':
     app.run(debug=True)
