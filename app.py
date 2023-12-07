@@ -26,13 +26,20 @@ def insert_proteins():
                 'Protein_names': protein[2],
                 'GO': protein[3],
                 'InterPro': [],
-                'EC_number': protein[5],
-                'GO_ID': protein[6]
+                'EC_number': protein[6],
+                'GO_ID': []
             })
             iprs = [element for element in protein[4].split(';') if element]
             mongo.db.proteins.update_one(
                 {'Entry': protein[0]},
                 {'$push': {'InterPro': {'$each': iprs}}}
+            )
+
+            go_ids_str = protein[4]
+            go_ids_list = [go_id.strip() for go_id in go_ids_str.split(';')]
+            mongo.db.proteins.update_one(
+                {'Entry': protein[0]},
+                {'$push': {'GO_ID': {'$each': go_ids_list}}}
             )
 
     return "Done"
@@ -70,7 +77,7 @@ def insert_links():
                 if ipr in compared_domain:
                     inter_domain.append(ipr)
             jaccard_coeff = len(inter_domain) / len(union_domain)
-            if(jaccard_coeff < 0.8) :
+            if(jaccard_coeff < 0.90) :
                 continue
             else: 
                 # Insertion du lien dans la base de données
