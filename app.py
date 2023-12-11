@@ -1,10 +1,43 @@
 from flask import Flask, render_template
 from flask_pymongo import PyMongo
 from script_protein2ipr import process_protein2ipr
+from neo4j import GraphDatabase
+
 import re
 app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb://localhost:27017/proteins"
 mongo = PyMongo(app)
+
+
+class Neo4jGraph:
+    def __init__(self, uri, user, password):
+        self._driver = GraphDatabase.driver(uri, auth=(user, password))
+
+    def close(self):
+        self._driver.close()
+
+    def create_protein_nodes(self, proteins):
+        with self._driver.session() as session:
+            session.run("CREATE (:Protein {name: $name})", name=proteins)
+
+    def create_associations(self, base_protein, protein_associations):
+        base_protein = str(base_protein) if not isinstance(base_protein, str) else base_protein
+        with self._driver.session() as session:
+                for associated_protein_dict in protein_associations:
+                    for entry, coefficient in associated_protein_dict.items():
+                        print(entry, coefficient)
+                        entry_str = str(entry) if not isinstance(entry, str) else entry
+
+                        session.run(
+                            """
+                                MERGE (a:Protein {name: $protein})
+                                MERGE (b:Protein {name: $associated_protein})
+                                CREATE (a)-[r:ASSOCIATED_WITH {coefficient: $coefficient}]->(b)
+                            """,
+                            protein=base_protein,
+                            associated_protein=entry_str,
+                            coefficient=coefficient
+                        )
 
 @app.route('/')
 def hello():
@@ -47,6 +80,7 @@ def insert_proteins():
 # Route pour calculer les liens entre les protéines et les insérer dans la base de données s'ils sont convenables.
 @app.route('/insert/links')
 def insert_links():
+    print("Insertion des liens entre les protéines")
     with open("data.tsv", "r") as file:
         proteins_data = file.readlines()
 
@@ -56,8 +90,8 @@ def insert_links():
         current_domain =  [element for element in current_protein[4].split(';') if element] # Domaine d'une protéine = la liste de ses IPRs
         if len(current_domain) == 0:
             continue
-        for j, line2 in enumerate(proteins_data, start=i+1):
-            compared_protein_line = line2.split('\t')
+        for j, ligne2 in enumerate(proteins_data[i+1:]):
+            compared_protein_line = ligne2.split('\t')
             if (current_protein[0] == compared_protein_line[0]):
                 continue
 
@@ -134,7 +168,6 @@ def correct_db():
             # Transformation de la chaîne de caractères en tableau
             go_ids_str = protein['GO_ID']
             go_ids_list = [go_id.strip() for go_id in go_ids_str.split(';')]
-            print(go_ids_list)
             # Mise à jour du document dans la collection
             mongo.db.proteins.update_one(
                 {'_id': protein['_id']},
@@ -142,6 +175,30 @@ def correct_db():
             )
 
     return 'DONE'
+
+@app.route('/insert/graph')
+def insert_graph():
+ # Initialisation de neo4j
+    uri = "bolt://localhost:7687"
+    user = "neo4j"
+    password = "password"
+    neo4j_graph = Neo4jGraph(uri, user, password)
+ # Création des noeuds neo4j
+    listProt = mongo.db.links.find({})
+    proteinDataList = []
+    for protein in listProt:
+        proteinData = mongo.db.links.find_one({'_id' : protein['_id'] })
+        proteinDataList.append(proteinData)
+        neo4j_graph.create_protein_nodes(proteinData['Entry'])
+
+    for proteinData in proteinDataList:
+        
+        if proteinData['Links'] == None or proteinData['Links'] == []:
+            continue
+        neo4j_graph.create_associations(protein, proteinData['Links'])
+    
+    neo4j_graph.close()
+
 
 if __name__ == '__main__':
     app.run(debug=True)

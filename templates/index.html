@@ -1,12 +1,85 @@
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    <script src="https://unpkg.com/neovis.js@2.0.2"></script>
 
-    <h1>YO MON PETIT POTE</h1>
+<head>
+    <title>Neovis.js Simple Example</title>
+    <style type="text/css">
+        html,
+        body {
+            font: 16pt arial;
+        }
+
+        #viz {
+            width: 900px;
+            height: 700px;
+            border: 1px solid lightgray;
+            font: 22pt arial;
+        }
+    </style>
+    <script src="https://unpkg.com/neovis.js@2.0.2"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+
+        let neoViz;
+
+        function draw() {
+            const config = {
+                containerId: "viz",
+                neo4j: {
+                    serverUrl: "bolt://localhost:7687",
+                    serverUser: "neo4j",
+                    serverPassword: "password",
+                },
+                labels: {
+                    Protein: {
+                        label: "name",
+                    }
+                },
+                relationships: {
+                    ASSOCIATED_WITH: {
+                        value: "coefficient"
+                    }
+                },
+                initialCypher: "MATCH (p1)-[r:ASSOCIATED_WITH]->(p2) RETURN p1,r,p2 LIMIT 100"
+            };
+
+            neoViz = new NeoVis.default(config);
+            neoViz.render();
+        }
+    </script>
+
+</head>
+
+<body onload="draw()">
+    <div id="viz"></div>
+
+
+    Cypher query: <textarea rows="4" cols=50 id="cypher"></textarea><br>
+    <input type="submit" value="Submit" id="reload">
+    <input type="submit" value="Stabilize" id="stabilize">
+
+
 </body>
+
+<script>
+    $("#reload").click(function () {
+
+        var cypher = $("#cypher").val();
+
+        if (cypher.length > 3) {
+            console.log("renderWithCypher");
+            neoViz.renderWithCypher(cypher);
+        } else {
+            console.log("reload");
+            neoViz.reload();
+
+        }
+
+    });
+
+    $("#stabilize").click(function () {
+        neoViz.stabilize();
+    })
+
+</script>
+
 </html>
